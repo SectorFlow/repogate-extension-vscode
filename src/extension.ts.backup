@@ -1,0 +1,102 @@
+import * as vscode from 'vscode';
+import { DependencyMonitor } from './services/DependencyMonitor';
+import { RepoGateApiClient } from './api/RepoGateApiClient';
+
+let dependencyMonitor: DependencyMonitor | undefined;
+
+export function activate(context: vscode.ExtensionContext) {
+    console.log('RepoGate extension is now active');
+
+    // Initialize the dependency monitor
+    dependencyMonitor = new DependencyMonitor(context);
+    dependencyMonitor.start();
+
+    // Register Test Connection command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('repogate.testConnection', async () => {
+            await testConnection();
+        })
+    );
+
+    // Register Scan Now command
+    context.subscriptions.push(
+        vscode.commands.registerCommand('repogate.scanNow', async () => {
+            if (dependencyMonitor) {
+                await dependencyMonitor.manualScan();
+            }
+        })
+    );
+
+    // Show welcome message
+    const config = vscode.workspace.getConfiguration('repogate');
+    const apiToken = config.get<string>('apiToken');
+    
+    if (!apiToken || apiToken.trim() === '') {
+        vscode.window.showWarningMessage(
+            'RepoGate: Please configure your API token in settings to enable dependency monitoring.',
+            'Open Settings'
+        ).then(selection => {
+            if (selection === 'Open Settings') {
+                vscode.commands.executeCommand('workbench.action.openSettings', 'repogate');
+            }
+        });
+    }
+}
+
+async function testConnection(): Promise<void> {
+    const config = vscode.workspace.getConfiguration('repogate');
+    const apiUrl = config.get<string>('apiUrl');
+    const apiToken = config.get<string>('apiToken');
+
+    if (!apiToken || apiToken.trim() === '') {
+        vscode.window.showErrorMessage(
+            'RepoGate: API Token is required. Please configure it in settings.',
+            'Open Settings'
+        ).then(selection => {
+            if (selection === 'Open Settings') {
+                vscode.commands.executeCommand('workbench.action.openSettings', 'repogate');
+            }
+        });
+        return;
+    }
+
+    if (!apiUrl || apiUrl.trim() === '') {
+        vscode.window.showErrorMessage('RepoGate: API URL is required. Please configure it in settings.');
+        return;
+    }
+
+    vscode.window.showInformationMessage('RepoGate: Testing connection...');
+
+    try {
+        const client = new RepoGateApiClient(apiUrl, apiToken);
+        
+        // Test with a known package
+        const response = await client.checkDependency('axios', 'npm');
+        
+        vscode.window.showInformationMessage(
+            `✓ RepoGate: Connection successful!\n\nAPI URL: ${apiUrl}\nStatus: Connected\nTest package (axios): ${response.status}`
+        );
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        
+        if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('Failed to fetch')) {
+            vscode.window.showErrorMessage(
+                `✗ RepoGate: Connection failed!\n\nAPI URL: ${apiUrl}\nError: Cannot connect to server\n\nPlease verify:\n1. RepoGate service is running\n2. API URL is correct\n3. Port number is correct`
+            );
+        } else if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+            vscode.window.showErrorMessage(
+                `✗ RepoGate: Authentication failed!\n\nAPI URL: ${apiUrl}\nError: Invalid API token\n\nPlease verify your API token is correct.`
+            );
+        } else {
+            vscode.window.showErrorMessage(
+                `✗ RepoGate: Connection failed!\n\nAPI URL: ${apiUrl}\nError: ${errorMessage}`
+            );
+        }
+    }
+}
+
+export function deactivate() {
+    if (dependencyMonitor) {
+        dependencyMonitor.dispose();
+    }
+}

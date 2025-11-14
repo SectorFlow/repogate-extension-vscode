@@ -1,0 +1,131 @@
+{
+  "name": "repogate",
+  "displayName": "RepoGate",
+  "description": "Security gatekeeper for your project dependencies. Validates dependencies against vulnerabilities before installation.",
+  "version": "1.7.3",
+  "publisher": "repogate",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "workspaceContains:package.json",
+    "workspaceContains:pom.xml",
+    "workspaceContains:build.gradle",
+    "workspaceContains:build.gradle.kts"
+  ],
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "security",
+    "dependencies",
+    "npm",
+    "maven",
+    "gradle",
+    "vulnerability"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "RepoGate",
+      "properties": {
+        "repogate.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable RepoGate dependency monitoring"
+        },
+        "repogate.apiUrl": {
+          "type": "string",
+          "default": "https://api.repogate.io/api/v1",
+          "description": "RepoGate API base URL"
+        },
+        "repogate.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable or disable RepoGate dependency monitoring"
+        },
+        "repogate.tokenStatus": {
+          "type": "string",
+          "default": "❌ Not configured",
+          "description": "API token status (read-only)",
+          "readOnly": true,
+          "markdownDescription": "**API Token Status**: Not configured\n\n**[Set API Token](command:repogate.setToken)** | **[Clear Token](command:repogate.clearToken)**\n\n_Token is stored securely in VS Code SecretStorage (encrypted)_"
+        },
+        "repogate.pollIntervalMs": {
+          "type": "number",
+          "default": 10000,
+          "minimum": 3000,
+          "description": "Polling interval in milliseconds for checking dependency status (minimum 3000ms)"
+        },
+        "repogate.includeDevDependencies": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include devDependencies in scans and validation"
+        },
+        "repogate.testConnection": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "**[Test Connection](command:repogate.testConnection)** - Click to test connectivity to RepoGate API"
+        },
+        "repogate.scanNow": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "**[Scan Now](command:repogate.scanNow)** - Click to manually scan all packages and send to /queue"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "repogate.setToken",
+        "title": "RepoGate: Set API Token"
+      },
+      {
+        "command": "repogate.clearToken",
+        "title": "RepoGate: Clear API Token"
+      },
+      {
+        "command": "repogate.testConnection",
+        "title": "RepoGate: Test Connection"
+      },
+      {
+        "command": "repogate.scanNow",
+        "title": "RepoGate: Scan Now"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/test-electron": "^2.3.8",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SectorFlow/repogate-extention-vscode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SectorFlow/repogate-extention-vscode/issues"
+  },
+  "homepage": "https://github.com/SectorFlow/repogate-extention-vscode#readme",
+  "license": "MIT"
+}
