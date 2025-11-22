@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { RepoGateApiClient, QueueRequest } from '../api/client';
-import { RepoGateConfig } from '../auth/authManager';
+import { RepoGateConfig, AuthManager } from '../auth/authManager';
 import { logger } from '../utils/logger';
 import { GitDetector } from '../utils/gitDetector';
 import { DependencyParser } from '../parsers/DependencyParser';
@@ -14,7 +14,7 @@ const BOOTSTRAP_KEY = 'repogate.bootstrapCompleted';
 export class BootstrapService {
     private parsers: DependencyParser[];
 
-    constructor(private context: vscode.ExtensionContext) {
+    constructor(private context: vscode.ExtensionContext, private authManager: AuthManager) {
         this.parsers = [
             new NpmDependencyParser(),
             new MavenDependencyParser(),
@@ -64,7 +64,7 @@ export class BootstrapService {
         try {
             logger.info('Starting bootstrap queue process...');
 
-            const client = new RepoGateApiClient(config.apiUrl, config.apiToken);
+            const client = new RepoGateApiClient(config.apiUrl, this.authManager);
             const workspaceId = this.getWorkspaceId();
             
             // Check if workspace has a Git repository

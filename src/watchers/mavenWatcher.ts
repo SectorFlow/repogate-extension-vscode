@@ -105,7 +105,7 @@ export class MavenWatcher {
     private async handleNewDependency(uri: vscode.Uri, dep: DependencyInfo) {
         const config = await this.authManager.getConfig();
         if (!config) return;
-        const client = new RepoGateApiClient(config.apiUrl, config.apiToken);
+        const client = new RepoGateApiClient(config.apiUrl, this.authManager);
         const workspaceId = this.getWorkspaceId();
 
         // Initialize status cache
@@ -237,7 +237,7 @@ export class MavenWatcher {
     private async checkDependencyStatus(uri: vscode.Uri, dep: DependencyInfo) {
         const config = await this.authManager.getConfig();
         if (!config) return;
-        const client = new RepoGateApiClient(config.apiUrl, config.apiToken);
+        const client = new RepoGateApiClient(config.apiUrl, this.authManager);
         const workspaceId = this.getWorkspaceId();
 
         try {
@@ -272,7 +272,7 @@ export class MavenWatcher {
     private async handleRemovedDependency(uri: vscode.Uri, dep: DependencyInfo) {
         const config = await this.authManager.getConfig();
         if (!config) return;
-        const client = new RepoGateApiClient(config.apiUrl, config.apiToken);
+        const client = new RepoGateApiClient(config.apiUrl, this.authManager);
         const workspaceId = this.getWorkspaceId();
 
         // Stop polling

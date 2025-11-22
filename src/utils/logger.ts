@@ -1,15 +1,51 @@
 import * as vscode from 'vscode';
 
+enum LogLevel {
+    ERROR = 0,
+    WARN = 1,
+    INFO = 2,
+    DEBUG = 3
+}
+
 class Logger {
     private outputChannel: vscode.OutputChannel | undefined;
+    private logLevel: LogLevel = LogLevel.ERROR; // Default to ERROR only
 
     initialize() {
         if (!this.outputChannel) {
             this.outputChannel = vscode.window.createOutputChannel('RepoGate');
         }
+        
+        // Read log level from configuration
+        const config = vscode.workspace.getConfiguration('repogate');
+        const configLevel = config.get<string>('logLevel', 'error');
+        this.setLogLevel(configLevel);
     }
 
-    private log(level: string, message: string, ...args: any[]) {
+    setLogLevel(level: string) {
+        switch (level.toLowerCase()) {
+            case 'debug':
+                this.logLevel = LogLevel.DEBUG;
+                break;
+            case 'info':
+                this.logLevel = LogLevel.INFO;
+                break;
+            case 'warn':
+                this.logLevel = LogLevel.WARN;
+                break;
+            case 'error':
+            default:
+                this.logLevel = LogLevel.ERROR;
+                break;
+        }
+    }
+
+    private log(level: string, levelValue: LogLevel, message: string, ...args: any[]) {
+        // Skip if log level is below current threshold
+        if (levelValue > this.logLevel) {
+            return;
+        }
+
         if (!this.outputChannel) {
             this.initialize();
         }
@@ -37,20 +73,20 @@ class Logger {
     }
 
     info(message: string, ...args: any[]) {
-        this.log('INFO', message, ...args);
+        this.log('INFO', LogLevel.INFO, message, ...args);
     }
 
     warn(message: string, ...args: any[]) {
-        this.log('WARN', message, ...args);
+        this.log('WARN', LogLevel.WARN, message, ...args);
     }
 
     error(message: string, ...args: any[]) {
-        this.log('ERROR', message, ...args);
+        this.log('ERROR', LogLevel.ERROR, message, ...args);
         console.error(message, ...args);
     }
 
     debug(message: string, ...args: any[]) {
-        this.log('DEBUG', message, ...args);
+        this.log('DEBUG', LogLevel.DEBUG, message, ...args);
     }
 
     show() {

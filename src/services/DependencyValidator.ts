@@ -34,7 +34,7 @@ export class DependencyValidator {
             return;
         }
 
-        const apiUrl = config.get<string>('apiUrl') || 'https://api.repogate.io/api/v1';
+        const apiUrl = config.get<string>('apiUrl') || 'https://app.repogate.io/api/v1';
         const key = `${dependency.packageName}:${dependency.packageManager}`;
         this.pendingDependencies.set(key, dependency);
 

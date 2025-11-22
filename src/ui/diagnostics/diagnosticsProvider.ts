@@ -151,6 +151,24 @@ export class DiagnosticsProvider {
         logger.debug(`Updated diagnostics for ${uri.fsPath}: ${vsDiagnostics.length} items`);
     }
 
+    /**
+     * Get all diagnostics across all files
+     */
+    getAll(): Map<vscode.Uri, Array<DependencyDiagnostic & { packageName: string }>> {
+        const result = new Map<vscode.Uri, Array<DependencyDiagnostic & { packageName: string }>>();
+        
+        for (const [filePath, diagnostics] of this.fileDiagnostics) {
+            const uri = vscode.Uri.file(filePath);
+            const diagsWithPackageName = diagnostics.map(d => ({
+                ...d,
+                packageName: d.name
+            }));
+            result.set(uri, diagsWithPackageName);
+        }
+        
+        return result;
+    }
+
     dispose() {
         this.diagnosticCollection.dispose();
     }

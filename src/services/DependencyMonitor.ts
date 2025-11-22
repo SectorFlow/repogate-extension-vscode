@@ -172,7 +172,7 @@ export class DependencyMonitor {
         const config = vscode.workspace.getConfiguration('repogate');
         const enabled = config.get<boolean>('enabled');
         const apiToken = config.get<string>('apiToken');
-        const apiUrl = config.get<string>('apiUrl') || 'https://api.repogate.io/api/v1';
+        const apiUrl = config.get<string>('apiUrl') || 'https://app.repogate.io/api/v1';
 
         if (!enabled || !apiToken || apiToken.trim() === '') {
             console.log('RepoGate: Skipping queue - extension not configured');
@@ -359,7 +359,7 @@ export class DependencyMonitor {
         const config = vscode.workspace.getConfiguration('repogate');
         const enabled = config.get<boolean>('enabled');
         const apiToken = config.get<string>('apiToken');
-        const apiUrl = config.get<string>('apiUrl') || 'https://api.repogate.io/api/v1';
+        const apiUrl = config.get<string>('apiUrl') || 'https://app.repogate.io/api/v1';
 
         if (!enabled || !apiToken || apiToken.trim() === '') {
             return;

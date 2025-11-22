@@ -13,6 +13,8 @@ export class StatusBarManager {
     private currentStatus: RepoGateStatus = RepoGateStatus.DISABLED;
     private pendingCount: number = 0;
     private deniedCount: number = 0;
+    private userEmail?: string;
+    private authMode?: string;
 
     constructor() {
         this.statusBarItem = vscode.window.createStatusBarItem(
@@ -40,6 +42,12 @@ export class StatusBarManager {
 
     setDeniedCount(count: number) {
         this.deniedCount = count;
+        this.updateDisplay();
+    }
+
+    setUserInfo(email: string, authMode: string) {
+        this.userEmail = email;
+        this.authMode = authMode;
         this.updateDisplay();
     }
 

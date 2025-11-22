@@ -1,5 +1,6 @@
-import axios, { AxiosInstance, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { logger } from '../utils/logger';
+import { AuthManager } from '../auth/authManager';
 
 export interface QueueRequest {
     projectName: string;
@@ -50,20 +51,99 @@ export interface UpdatePayload {
     repository?: boolean;
 }
 
+export interface HeartbeatResponse {
+    status: 'healthy' | 'warning';
+    message: string;
+    timestamp: string;
+    deniedPackages?: string[];
+    alert?: {
+        severity: 'warning';
+        title: string;
+        message: string;
+        packages: string[];
+    };
+}
+
 export class RepoGateApiClient {
     private client: AxiosInstance;
     private maxRetries = 3;
     private baseDelay = 1000; // 1 second
+    private isRefreshing = false;
 
-    constructor(baseURL: string, token: string) {
+    constructor(
+        private baseURL: string,
+        private authManager: AuthManager
+    ) {
         this.client = axios.create({
             baseURL,
+            timeout: 30000,
             headers: {
-                'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json'
-            },
-            timeout: 30000
+            }
         });
+
+        // Add request interceptor to inject token
+        this.client.interceptors.request.use(
+            async (config) => await this.injectToken(config),
+            (error) => Promise.reject(error)
+        );
+
+        // Add response interceptor to handle 401 errors
+        this.client.interceptors.response.use(
+            (response) => response,
+            async (error) => await this.handleResponseError(error)
+        );
+    }
+
+    /**
+     * Inject authentication token into request
+     */
+    private async injectToken(config: InternalAxiosRequestConfig): Promise<InternalAxiosRequestConfig> {
+        const authConfig = await this.authManager.getConfig();
+
+        if (authConfig.authMode === 'ENTRA_SSO' && authConfig.accessToken) {
+            config.headers.Authorization = `Bearer ${authConfig.accessToken}`;
+        } else if (authConfig.authMode === 'LOCAL_TOKEN' && authConfig.apiToken) {
+            config.headers.Authorization = `Bearer ${authConfig.apiToken}`;
+        }
+
+        return config;
+    }
+
+    /**
+     * Handle response errors, including token refresh on 401
+     */
+    private async handleResponseError(error: AxiosError): Promise<any> {
+        const originalRequest = error.config;
+
+        // Handle 401 Unauthorized
+        if (error.response?.status === 401 && originalRequest && !this.isRefreshing) {
+            const authConfig = await this.authManager.getConfig();
+
+            // Only attempt refresh for ENTRA_SSO users
+            if (authConfig.authMode === 'ENTRA_SSO') {
+                this.isRefreshing = true;
+                
+                try {
+                    logger.info('401 error, attempting token refresh');
+                    const refreshed = await this.authManager.refreshToken();
+                    
+                    if (refreshed) {
+                        logger.info('Token refreshed, retrying request');
+                        this.isRefreshing = false;
+                        
+                        // Retry the original request
+                        return this.client.request(originalRequest);
+                    }
+                } catch (refreshError) {
+                    logger.error('Token refresh failed:', refreshError);
+                } finally {
+                    this.isRefreshing = false;
+                }
+            }
+        }
+
+        return Promise.reject(error);
     }
 
     /**
@@ -113,6 +193,16 @@ export class RepoGateApiClient {
     }
 
     /**
+     * POST /heartbeat - Send heartbeat and receive denied package notifications
+     */
+    async heartbeat(): Promise<HeartbeatResponse> {
+        return await this.retryRequest(async () => {
+            const response = await this.client.post('/heartbeat', {});
+            return response.data;
+        });
+    }
+
+    /**
      * Test connection to API
      */
     async testConnection(): Promise<{ success: boolean; message: string }> {
@@ -130,7 +220,7 @@ export class RepoGateApiClient {
             if (axiosError.response?.status === 401) {
                 return {
                     success: false,
-                    message: 'Authentication failed: Invalid API token'
+                    message: 'Authentication failed: Invalid credentials'
                 };
             } else if (axiosError.code === 'ECONNREFUSED') {
                 return {

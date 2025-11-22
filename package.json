@@ -2,7 +2,7 @@
   "name": "repogate",
   "displayName": "RepoGate",
   "description": "Security gatekeeper for your project dependencies. Validates dependencies against vulnerabilities before installation.",
-  "version": "1.7.8",
+  "version": "1.9.0",
   "icon": "repogate_extension_icon.png",
   "publisher": "repogate",
   "engines": {
@@ -45,67 +45,50 @@
     "gradle",
     "vulnerability"
   ],
-  "activationEvents": [
-    "onStartupFinished"
-  ],
   "main": "./out/extension.js",
   "contributes": {
     "configuration": {
       "title": "RepoGate",
       "properties": {
-        "repogate.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable or disable RepoGate dependency monitoring"
-        },
-        "repogate.apiUrl": {
+        "repogate.authenticationStatus": {
           "type": "string",
-          "default": "https://api.repogate.io/api/v1",
-          "description": "RepoGate API base URL"
-        },
-        "repogate.enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "Enable or disable RepoGate dependency monitoring"
-        },
-        "repogate.tokenStatus": {
-          "type": "string",
-          "default": "❌ Not configured",
-          "description": "API token status (read-only)",
+          "default": "Not signed in",
+          "description": "Current authentication status",
           "readOnly": true,
-          "markdownDescription": "**API Token Status**: Not configured\n\n**[Set API Token](command:repogate.setToken)** | **[Clear Token](command:repogate.clearToken)**\n\n_Token is stored securely in VS Code SecretStorage (encrypted)_"
+          "markdownDescription": "**Authentication Status**\n\nTo sign in or manage your account, open the **Command Palette** (`Ctrl+Shift+P` or `Cmd+Shift+P`) and search for:\n\n- `RepoGate: Sign In with EntraID` (Recommended)\n- `RepoGate: Sign In with API Token (Legacy)`\n- `RepoGate: Sign Out`\n- `RepoGate: Show Account Info`\n\n_Credentials are stored securely in VS Code SecretStorage (encrypted)_"
         },
-        "repogate.pollIntervalMs": {
-          "type": "number",
-          "default": 10000,
-          "minimum": 3000,
-          "description": "Polling interval in milliseconds for checking dependency status (minimum 3000ms)"
-        },
-        "repogate.includeDevDependencies": {
-          "type": "boolean",
-          "default": true,
-          "description": "Include devDependencies in scans and validation"
-        },
-        "repogate.testConnection": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "**[Test Connection](command:repogate.testConnection)** - Click to test connectivity to RepoGate API"
-        },
-        "repogate.scanNow": {
-          "type": "boolean",
-          "default": false,
-          "markdownDescription": "**[Scan Now](command:repogate.scanNow)** - Click to manually scan all packages and send to /queue"
+        "repogate.logLevel": {
+          "type": "string",
+          "enum": ["error", "warn", "info", "debug"],
+          "default": "error",
+          "description": "Logging level for RepoGate output (use command to change)"
         }
       }
     },
     "commands": [
       {
+        "command": "repogate.signInEntraID",
+        "title": "RepoGate: Sign In with EntraID"
+      },
+      {
+        "command": "repogate.signInAPIToken",
+        "title": "RepoGate: Sign In with API Token (Legacy)"
+      },
+      {
+        "command": "repogate.signOut",
+        "title": "RepoGate: Sign Out"
+      },
+      {
+        "command": "repogate.showAccountInfo",
+        "title": "RepoGate: Show Account Info"
+      },
+      {
         "command": "repogate.setToken",
-        "title": "RepoGate: Set API Token"
+        "title": "RepoGate: Set API Token (Legacy)"
       },
       {
         "command": "repogate.clearToken",
-        "title": "RepoGate: Clear API Token"
+        "title": "RepoGate: Clear Token (Legacy)"
       },
       {
         "command": "repogate.testConnection",
@@ -114,6 +97,38 @@
       {
         "command": "repogate.scanNow",
         "title": "RepoGate: Scan Now"
+      },
+      {
+        "command": "repogate.setApiUrl",
+        "title": "RepoGate: Set API URL"
+      },
+      {
+        "command": "repogate.setPollInterval",
+        "title": "RepoGate: Set Poll Interval"
+      },
+      {
+        "command": "repogate.toggleEnabled",
+        "title": "RepoGate: Toggle Enabled/Disabled"
+      },
+      {
+        "command": "repogate.toggleDevDependencies",
+        "title": "RepoGate: Toggle Include Dev Dependencies"
+      },
+      {
+        "command": "repogate.showOutput",
+        "title": "RepoGate: Show Output"
+      },
+      {
+        "command": "repogate.clearDiagnostics",
+        "title": "RepoGate: Clear Diagnostics"
+      },
+      {
+        "command": "repogate.setLogLevel",
+        "title": "RepoGate: Set Log Level"
+      },
+      {
+        "command": "repogate.seeViolations",
+        "title": "RepoGate: See Current Violations"
       }
     ]
   },
