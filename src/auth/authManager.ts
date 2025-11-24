@@ -75,7 +75,23 @@ export class AuthManager {
         if (existingConfig && existingConfig.authMode !== 'UNAUTHENTICATED') {
             // Verify token is still valid
             if (await this.isTokenValid(existingConfig)) {
+                // Restart timer if using Entra SSO
+                if (existingConfig.authMode === 'ENTRA_SSO' && existingConfig.tokenExpiration) {
+                    const timeUntilExpiration = existingConfig.tokenExpiration - Date.now();
+                    const expiresIn = Math.max(Math.floor(timeUntilExpiration / 1000), 0);
+                    this.startTokenRefreshTimer(expiresIn);
+                    logger.info(`Token refresh timer restarted (expires in ${expiresIn}s)`);
+                }
                 return existingConfig;
+            }
+            
+            // Try to refresh expired token on startup
+            if (existingConfig.authMode === 'ENTRA_SSO') {
+                logger.info('Token expired on startup, attempting refresh...');
+                const refreshed = await this.refreshToken();
+                if (refreshed) {
+                    return await this.getConfig();
+                }
             }
         }
 
@@ -302,6 +318,12 @@ export class AuthManager {
     private async storeEntraAuth(authResponse: EntraAuthResponse): Promise<void> {
         // Store access token in SecretStorage
         await this.context.secrets.store(ACCESS_TOKEN_KEY, authResponse.accessToken);
+        
+        // Store refresh token if available
+        if ((authResponse as any).refreshToken) {
+            await this.context.secrets.store(REFRESH_TOKEN_KEY, (authResponse as any).refreshToken);
+            logger.info('Refresh token stored successfully');
+        }
 
         // Store user info and auth mode in GlobalState
         await this.context.globalState.update('userEmail', authResponse.user.email);
@@ -318,32 +340,35 @@ export class AuthManager {
     }
 
     /**
-     * Refresh expired JWT token
+     * Refresh expired JWT token using refresh token
      */
     async refreshToken(): Promise<boolean> {
         try {
-            const accessToken = await this.context.secrets.get(ACCESS_TOKEN_KEY);
-            if (!accessToken) {
-                logger.warn('No access token to refresh');
+            const refreshToken = await this.context.secrets.get(REFRESH_TOKEN_KEY);
+            if (!refreshToken) {
+                logger.warn('No refresh token available');
                 return false;
             }
 
             const config = vscode.workspace.getConfiguration('repogate');
             const apiUrl = config.get<string>('apiUrl') || 'https://app.repogate.io/api/v1';
 
-            logger.info('Refreshing access token');
+            logger.info('Refreshing access token using refresh token');
             const response = await axios.post<TokenRefreshResponse>(
                 `${apiUrl}/auth/entra/refresh`,
-                {},
                 {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    }
+                    refreshToken: refreshToken  // Send refresh token in body
                 }
             );
 
-            // Store new token
+            // Store new access token
             await this.context.secrets.store(ACCESS_TOKEN_KEY, response.data.accessToken);
+            
+            // Store new refresh token if provided (token rotation)
+            if ((response.data as any).refreshToken) {
+                await this.context.secrets.store(REFRESH_TOKEN_KEY, (response.data as any).refreshToken);
+                logger.info('New refresh token stored (token rotation)');
+            }
             
             // Update expiration time
             const expirationTime = Date.now() + (response.data.expiresIn * 1000);

@@ -125,7 +125,7 @@ export class OAuthService {
             response_type: 'code',
             redirect_uri: redirectUri,
             response_mode: 'query',
-            scope: 'openid profile email',
+            scope: 'openid profile email offline_access',  // Added offline_access for refresh tokens
             state: state,
             code_challenge: codeChallenge,
             code_challenge_method: 'S256'

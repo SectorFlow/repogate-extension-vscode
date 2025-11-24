@@ -2,7 +2,7 @@
   "name": "repogate",
   "displayName": "RepoGate",
   "description": "Security gatekeeper for your project dependencies. Validates dependencies against vulnerabilities before installation.",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "icon": "repogate_extension_icon.png",
   "publisher": "repogate",
   "engines": {
@@ -59,7 +59,12 @@
         },
         "repogate.logLevel": {
           "type": "string",
-          "enum": ["error", "warn", "info", "debug"],
+          "enum": [
+            "error",
+            "warn",
+            "info",
+            "debug"
+          ],
           "default": "error",
           "description": "Logging level for RepoGate output (use command to change)"
         }
