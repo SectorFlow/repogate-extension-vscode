@@ -134,6 +134,10 @@
       {
         "command": "repogate.seeViolations",
         "title": "RepoGate: See Current Violations"
+      },
+      {
+        "command": "repogate.clearAllData",
+        "title": "RepoGate: Clear All Data (Reset Extension)"
       }
     ]
   },
