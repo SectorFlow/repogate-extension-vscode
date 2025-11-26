@@ -70,11 +70,19 @@ export class AuthManager {
      * Returns config if ready, undefined if not
      */
     async ensureAuthOrPrompt(): Promise<RepoGateConfig | undefined> {
-        // Check if already authenticated
-        const existingConfig = await this.getConfig();
-        if (existingConfig && existingConfig.authMode !== 'UNAUTHENTICATED') {
-            // Verify token is still valid
-            if (await this.isTokenValid(existingConfig)) {
+        try {
+            logger.info('ensureAuthOrPrompt: Starting authentication check');
+            
+            // Check if already authenticated
+            logger.info('ensureAuthOrPrompt: Getting config...');
+            const existingConfig = await this.getConfig();
+            logger.info(`ensureAuthOrPrompt: Config retrieved, authMode=${existingConfig?.authMode}`);
+            
+            if (existingConfig && existingConfig.authMode !== 'UNAUTHENTICATED') {
+                // Verify token is still valid
+                logger.info('ensureAuthOrPrompt: Checking token validity...');
+                if (await this.isTokenValid(existingConfig)) {
+                    logger.info('ensureAuthOrPrompt: Token is valid');
                 // Restart timer if using Entra SSO
                 if (existingConfig.authMode === 'ENTRA_SSO' && existingConfig.tokenExpiration) {
                     const timeUntilExpiration = existingConfig.tokenExpiration - Date.now();
@@ -97,8 +105,14 @@ export class AuthManager {
         }
 
         // Not authenticated or invalid token, prompt user
-        await this.promptForAuth();
-        return undefined;
+            logger.info('ensureAuthOrPrompt: Not authenticated, prompting user');
+            await this.promptForAuth();
+            return undefined;
+        } catch (error: any) {
+            logger.error('ensureAuthOrPrompt: Fatal error during authentication check:', error);
+            // Return undefined to prevent extension crash
+            return undefined;
+        }
     }
 
     /**
@@ -523,28 +537,52 @@ export class AuthManager {
      * Get current configuration
      */
     async getConfig(): Promise<RepoGateConfig> {
-        const config = vscode.workspace.getConfiguration('repogate');
-        const apiUrl = config.get<string>('apiUrl') || 'https://app.repogate.io/api/v1';
-        const pollIntervalMs = Math.max(config.get<number>('pollIntervalMs') || 10000, 3000);
-        const includeDevDependencies = config.get<boolean>('includeDevDependencies') ?? true;
+        try {
+            logger.info('getConfig: Starting...');
+            const config = vscode.workspace.getConfiguration('repogate');
+            const apiUrl = config.get<string>('apiUrl') || 'https://app.repogate.io/api/v1';
+            const pollIntervalMs = config.get<number>('pollIntervalMs', 10000);
+            const includeDevDependencies = config.get<boolean>('includeDevDependencies', false);
+            const authMode = this.context.globalState.get<'LOCAL_TOKEN' | 'ENTRA_SSO'>('authMode') || 'UNAUTHENTICATED';
+            
+            logger.info('getConfig: Getting secrets...');
+            // Add timeout to secrets retrieval to prevent hanging
+            const secretsPromise = Promise.all([
+                this.context.secrets.get(TOKEN_KEY),
+                this.context.secrets.get(ACCESS_TOKEN_KEY)
+            ]);
+            
+            const timeoutPromise = new Promise<[string | undefined, string | undefined]>((_, reject) => 
+                setTimeout(() => reject(new Error('Secrets retrieval timeout')), 5000)
+            );
+            
+            const [apiToken, accessToken] = await Promise.race([secretsPromise, timeoutPromise]);
+            logger.info('getConfig: Secrets retrieved');
 
-        const authMode = this.context.globalState.get<'LOCAL_TOKEN' | 'ENTRA_SSO'>('authMode') || 'UNAUTHENTICATED';
-        const apiToken = await this.context.secrets.get(TOKEN_KEY);
-        const accessToken = await this.context.secrets.get(ACCESS_TOKEN_KEY);
-
-        return {
-            apiUrl,
-            apiToken,
-            accessToken,
-            authMode: authMode as any,
-            pollIntervalMs,
-            includeDevDependencies,
-            userEmail: this.context.globalState.get<string>('userEmail'),
-            userName: this.context.globalState.get<string>('userName'),
-            userId: this.context.globalState.get<string>('userId'),
-            orgId: this.context.globalState.get<string>('orgId'),
-            tokenExpiration: this.context.globalState.get<number>('tokenExpiration')
-        };
+            return {
+                apiUrl,
+                apiToken,
+                accessToken,
+                authMode: authMode as any,
+                pollIntervalMs,
+                includeDevDependencies,
+                userEmail: this.context.globalState.get<string>('userEmail'),
+                userName: this.context.globalState.get<string>('userName'),
+                userId: this.context.globalState.get<string>('userId'),
+                orgId: this.context.globalState.get<string>('orgId'),
+                tokenExpiration: this.context.globalState.get<number>('tokenExpiration')
+            };
+        } catch (error: any) {
+            logger.error('getConfig: Error retrieving configuration:', error);
+            // Return minimal config to prevent crash
+            const config = vscode.workspace.getConfiguration('repogate');
+            return {
+                apiUrl: config.get<string>('apiUrl') || 'https://app.repogate.io/api/v1',
+                authMode: 'UNAUTHENTICATED',
+                pollIntervalMs: 10000,
+                includeDevDependencies: false
+            };
+        }
     }
 
     /**
