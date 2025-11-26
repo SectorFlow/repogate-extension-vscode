@@ -848,9 +848,11 @@ function updateStatusBarCounts() {
  * Clear All Data command implementation (for troubleshooting)
  */
 async function clearAllData() {
+    logger.info('=== Clear All Data command triggered ===');
+    logger.show();
+    console.log('Clear All Data command started');
+    
     try {
-        logger.info('=== Clear All Data command triggered ===');
-        logger.show();
         
         const confirmation = await vscode.window.showWarningMessage(
             'This will sign you out and clear all RepoGate data. Continue?',
