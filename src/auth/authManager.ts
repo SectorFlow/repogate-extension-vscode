@@ -559,11 +559,27 @@ export class AuthManager {
             const [apiToken, accessToken] = await Promise.race([secretsPromise, timeoutPromise]);
             logger.info('getConfig: Secrets retrieved');
 
+            // Auto-detect auth mode if not set but tokens exist
+            let effectiveAuthMode = authMode;
+            if (authMode === 'UNAUTHENTICATED' && (apiToken || accessToken)) {
+                if (accessToken) {
+                    effectiveAuthMode = 'ENTRA_SSO';
+                    logger.info('getConfig: Auto-detected ENTRA_SSO from accessToken');
+                    // Restore authMode to globalState
+                    await this.context.globalState.update('authMode', 'ENTRA_SSO');
+                } else if (apiToken) {
+                    effectiveAuthMode = 'LOCAL_TOKEN';
+                    logger.info('getConfig: Auto-detected LOCAL_TOKEN from apiToken');
+                    // Restore authMode to globalState
+                    await this.context.globalState.update('authMode', 'LOCAL_TOKEN');
+                }
+            }
+
             return {
                 apiUrl,
                 apiToken,
                 accessToken,
-                authMode: authMode as any,
+                authMode: effectiveAuthMode as any,
                 pollIntervalMs,
                 includeDevDependencies,
                 userEmail: this.context.globalState.get<string>('userEmail'),
