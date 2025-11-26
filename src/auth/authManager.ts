@@ -373,7 +373,8 @@ export class AuthManager {
                 {
                     headers: {
                         'Authorization': `Bearer ${accessToken || ''}`  // Send expired access token for session ID
-                    }
+                    },
+                    timeout: 10000  // 10 second timeout to prevent hanging
                 }
             );
 
@@ -442,8 +443,17 @@ export class AuthManager {
             // Check if token expires in less than 5 minutes
             const timeUntilExpiration = expiration - Date.now();
             if (timeUntilExpiration < 300000) { // 5 minutes
-                logger.info('Token expiring soon, refreshing...');
-                return await this.refreshToken();
+                logger.info('Token expiring soon, attempting refresh...');
+                try {
+                    const refreshed = await this.refreshToken();
+                    if (!refreshed) {
+                        logger.warn('Token refresh failed during validation, will retry on API call');
+                    }
+                    return refreshed;
+                } catch (error: any) {
+                    logger.error('Token refresh threw error during validation:', error.message);
+                    return false;
+                }
             }
 
             return true;
