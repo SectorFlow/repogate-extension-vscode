@@ -539,10 +539,25 @@ export class AuthManager {
 
     /**
      * Get user information
+     * Returns undefined if not authenticated or token is expired
      */
     async getUserInfo(): Promise<UserInfo | undefined> {
         const authMode = this.context.globalState.get<'LOCAL_TOKEN' | 'ENTRA_SSO'>('authMode');
         if (!authMode) {
+            return undefined;
+        }
+
+        // Check if token is expired
+        const tokenExpiration = this.context.globalState.get<number>('tokenExpiration');
+        if (tokenExpiration && Date.now() >= tokenExpiration) {
+            logger.warn('Token is expired, getUserInfo returning undefined');
+            return undefined;
+        }
+
+        // Check if we actually have a valid token
+        const token = this.context.globalState.get<string>('token');
+        if (!token) {
+            logger.warn('No token found, getUserInfo returning undefined');
             return undefined;
         }
 
